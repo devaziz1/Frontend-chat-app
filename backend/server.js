@@ -1,28 +1,39 @@
+const mongoose = require("mongoose");
 const express = require("express");
 const chats = require("./data/data");
 const dotenv = require("dotenv");
+const userRoutes = require("./routes/userRoutes")
 
 
 const app = express();
 dotenv.config();
+app.use(express.json());
 
 app.get("/", (req, res) => {
   res.send("App is runing... ");
 });
 
-app.get("/api/chats", (req, res) => {
-  res.send(chats);
+app.use("/api/user", userRoutes);
+
+
+
+
+// MongoDB connection URI
+const uri = "mongodb://localhost:27017/Chat-app";
+
+// Connect to MongoDB
+mongoose.connect(uri);
+
+// Get the default connection
+const db = mongoose.connection;
+
+// Event listeners for MongoDB connection
+db.on("error", console.error.bind(console, "connection error:"));
+db.once("open", function () {
+  console.log("Connected to MongoDB");
 });
 
-app.get("/api/chats/:id", (req, res) => {
-  const chatId = req.params.id;
-  const singleChat = chats.find((chat) => chat._id === chatId);
-  if (singleChat) {
-    res.send(singleChat);
-  } else {
-    res.status(404).send("Chat not found");
-  }
-});
+
 
 const PORT = process.env.PORT || 5000;
 
