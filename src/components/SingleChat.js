@@ -1,8 +1,8 @@
 import { FormControl } from "@chakra-ui/form-control";
 import { Input } from "@chakra-ui/input";
-import {  Text, Box } from "@chakra-ui/layout";
+import { Box, Text } from "@chakra-ui/layout";
 import "./styles.css";
-import { IconButton, Spinner, useToast } from "@chakra-ui/react";
+import { Button, IconButton, Spinner, useToast } from "@chakra-ui/react";
 import { getSender, getSenderFull } from "../config/ChatLogics";
 import { useEffect, useState } from "react";
 import axios from "axios";
@@ -15,7 +15,7 @@ import animationData from "../animations/typing.json";
 import io from "socket.io-client";
 import UpdateGroupChatModal from "./miscellaneous/UpdateGroupChatModal";
 import { ChatState } from "../Context/ChatProvider";
-const ENDPOINT = "http://localhost:5000"; // "https://talk-a-tive.herokuapp.com"; -> After deployment
+const ENDPOINT = "http://localhost:5000";
 var socket, selectedChatCompare;
 
 const SingleChat = ({ fetchAgain, setFetchAgain }) => {
@@ -25,6 +25,9 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
   const [socketConnected, setSocketConnected] = useState(false);
   const [typing, setTyping] = useState(false);
   const [istyping, setIsTyping] = useState(false);
+  const [file, setFile] = useState(null);
+  const [filename, setFilename] = useState(null);
+
   const toast = useToast();
 
   const defaultOptions = {
@@ -73,6 +76,7 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
   const sendMessage = async (event) => {
     if (event.key === "Enter" && newMessage) {
       socket.emit("stop typing", selectedChat._id);
+
       try {
         const config = {
           headers: {
@@ -80,15 +84,20 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
             Authorization: `Bearer ${user.token}`,
           },
         };
+
+        const formData = new FormData();
+        formData.append("content", newMessage);
+        formData.append("chatId", selectedChat._id);
+        formData.append("file", file);
+        formData.append("filename", filename);
+
+
         setNewMessage("");
-        const { data } = await axios.post(
-          "/api/message",
-          {
-            content: newMessage,
-            chatId: selectedChat,
-          },
-          config
-        );
+
+        const { data } = await axios.post("/api/message", formData, {
+          headers: config.headers,
+        });
+        setFile(null);
         socket.emit("new message", data);
         setMessages([...messages, data]);
       } catch (error) {
@@ -101,6 +110,35 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
           position: "bottom",
         });
       }
+
+      // try {
+      //   const config = {
+      //     headers: {
+      //       "Content-type": "application/json",
+      //       Authorization: `Bearer ${user.token}`,
+      //     },
+      //   };
+      //   setNewMessage("");
+      //   const { data } = await axios.post(
+      //     "/api/message",
+      //     {
+      //       content: newMessage,
+      //       chatId: selectedChat._id,
+      //     },
+      //     config
+      //   );
+      //   socket.emit("new message", data);
+      //   setMessages([...messages, data]);
+      // } catch (error) {
+      //   toast({
+      //     title: "Error Occured!",
+      //     description: "Failed to send the Message",
+      //     status: "error",
+      //     duration: 5000,
+      //     isClosable: true,
+      //     position: "bottom",
+      //   });
+      // }
     }
   };
 
@@ -157,7 +195,19 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
       }
     }, timerLength);
   };
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    const fileName = file.name;
+    setFilename(fileName);
+    const reader = new FileReader();
 
+    reader.onload = (event) => {
+      const base64Data = event.target.result.split(",")[1]; // Extract base64 data
+      setFile(base64Data); // Update state with base64 encoded data
+    };
+
+    reader.readAsDataURL(file);
+  };
   return (
     <>
       {selectedChat ? (
@@ -246,6 +296,8 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
                 value={newMessage}
                 onChange={typingHandler}
               />
+              <Input type="file" onChange={handleFileChange} />
+              <Button onClick={sendMessage}>Send File</Button>
             </FormControl>
           </Box>
         </>
