@@ -91,15 +91,20 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
         formData.append("file", file);
         formData.append("filename", filename);
 
-
         setNewMessage("");
 
-        const { data } = await axios.post("/api/message", formData, {
-          headers: config.headers,
-        });
-        setFile(null);
+        const { data } = await axios.post(
+          `${ENDPOINT}/api/message/`,
+          formData,
+          {
+            headers: config.headers,
+          }
+        );
+
         socket.emit("new message", data);
+        console.log("New message function emmits");
         setMessages([...messages, data]);
+        setFile(null);
       } catch (error) {
         toast({
           title: "Error Occured!",
